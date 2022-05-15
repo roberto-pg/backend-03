@@ -1,0 +1,8 @@
+{
+  "eslint.alwaysShowStatus": false,
+  "eslint.debug": false,
+  "eslint.enable": true,
+  "eslint.format.enable": false,
+  "eslint.onIgnoredFiles": "off",
+  "eslint.quiet": false
+}
