@@ -1,4 +1,5 @@
-import { AxiosStatic } from 'axios'
+import { AxiosStatic, AxiosError } from 'axios'
+import { InternalError } from '../util/errors/internal-error'
 
 export interface StormGlassPointSource {
   [key: string]: number
@@ -30,6 +31,14 @@ export interface ForecastPoint {
   windSpeed: number
 }
 
+export class ClientRequestError extends InternalError {
+  constructor(message: string) {
+    const internalMessage =
+      'Unexpect error when trying to communicate to StormGlass'
+    super(`${internalMessage}: ${message}`)
+  }
+}
+
 export class StormGlass {
   readonly stormGlassAPIParams =
     'swellDirection, swellHeight, swellPeriod, waveDirection, waveHeight, windDirection, windSpeed'
@@ -37,10 +46,32 @@ export class StormGlass {
   constructor(protected request: AxiosStatic) {}
 
   public async fetchPoints(lat: number, lng: number): Promise<ForecastPoint[]> {
-    const response = await this.request.get<StormGlassForecastResponse>(
-      `https://api.stormglass.io/v2/weather/point?params=${this.stormGlassAPIParams}&source=${this.stormGlassAPISource}&end=1652628367&lat=${lat}&lng=${lng}`
-    )
-    return this.normalizeResponse(response.data)
+    try {
+      const response = await this.request.get<StormGlassForecastResponse>(
+        `https://api.stormglass.io/v2/weather/point?params=${this.stormGlassAPIParams}&source=${this.stormGlassAPISource}&end=1652628367&lat=${lat}&lng=${lng}`,
+        {
+          headers: {
+            Authorozation: 'fake-token',
+          },
+        }
+      )
+      return this.normalizeResponse(response.data)
+    } catch (err) {
+      const axiosError = err as AxiosError
+      if (
+        axiosError instanceof Error &&
+        axiosError.response &&
+        axiosError.response.status
+      ) {
+        // throw new StormGlassResponseError(
+        //   `Error: ${JSON.stringify(axiosError.response.data)} Code: ${
+        //     axiosError.response.status
+        //   }`
+        // )
+      }
+      // The type is temporary given we will rework it in the upcoming chapters
+      throw new ClientRequestError((err as { message: any }).message)
+    }
   }
 
   private normalizeResponse(
